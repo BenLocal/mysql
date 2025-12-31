@@ -126,7 +126,7 @@ build-all-images: build-all-one-image-amd64     build-all-one-image-arm64v8     
                   build-all-one-image-amd64-5.5 build-all-one-image-arm64v8-5.5 build-all-one-image-arm32v7-5.5 uninstall-qemu
 
 # Actually, the 'push' will only be done is DOCKER_USERNAME is set and not empty !
-build-all-one-image: prepare build-one-image test-one-image push-one-image
+build-all-one-image: build-one-image test-one-image push-one-image
 
 build-all-one-image-arm32v6:
 	ARCH=arm32v6 LINUX_ARCH=armv6l  DOCKER_IMAGE_VERSION=${MYSQL_VERSION_ARM32V6} DOCKER_FILE='-f Dockerfile-5.5-arm32v6' make build-all-one-image
@@ -141,7 +141,7 @@ build-all-one-image-arm64v8-5.5:
 	ARCH=arm64v8 LINUX_ARCH=aarch64 DOCKER_IMAGE_VERSION=${MYSQL_VERSION_5_5} DOCKER_FILE='-f Dockerfile-5.5' make build-all-one-image
 
 build-all-one-image-arm64v8:
-	ARCH=arm64v8 LINUX_ARCH=aarch64 DOCKER_IMAGE_VERSION=${MYSQL_VERSION_OTHER_ARCH} make build-all-one-image
+	ARCH=arm64v8 LINUX_ARCH=aarch64 DOCKER_IMAGE_VERSION=${MYSQL_VERSION_OTHER_ARCH} docker buildx build --platform linux/arm64 -t ${DOCKER_IMAGE_TAGNAME} --build-arg VERSION="${DOCKER_IMAGE_VERSION}" --build-arg VCS_REF="${VCS_REF}" --build-arg BUILD_DATE="${BUILD_DATE}" --build-arg BUILD_ARCH="${BUILD_ARCH}" ${DOCKER_FILE} .
 
 build-all-one-image-amd64:
 	ARCH=amd64   LINUX_ARCH=x86_64  DOCKER_IMAGE_VERSION=${MYSQL_VERSION_OTHER_ARCH} make build-all-one-image
@@ -282,7 +282,7 @@ generate-test-suite:
 	echo "Done. See the file 'testSuite.sh'"
 
 build-one-image: check
-	docker build -t ${DOCKER_IMAGE_TAGNAME} --build-arg VERSION="${DOCKER_IMAGE_VERSION}" --build-arg VCS_REF="${VCS_REF}" --build-arg BUILD_DATE="${BUILD_DATE}" --build-arg BUILD_ARCH="${BUILD_ARCH}" ${DOCKER_FILE} .
+	docker buildx build --platform linux/arm64 -t ${DOCKER_IMAGE_TAGNAME} --build-arg VERSION="${DOCKER_IMAGE_VERSION}" --build-arg VCS_REF="${VCS_REF}" --build-arg BUILD_DATE="${BUILD_DATE}" --build-arg BUILD_ARCH="${BUILD_ARCH}" ${DOCKER_FILE} .
 
 test-one-image: check
 	# Smoke tests:

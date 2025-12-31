@@ -60,8 +60,8 @@ check-binaries:
 	@ which docker > /dev/null || (echo "Please install docker before using this script" && exit 1)
 	@ which git > /dev/null || (echo "Please install git before using this script" && exit 2)
 	@ # deprecated: which manifest-tool > /dev/null || (echo "Ensure that you've got the manifest-tool utility in your path. Could be downloaded from  https://github.com/estesp/manifest-tool/releases/" && exit 3)
-	@ DOCKER_CLI_EXPERIMENTAL=enabled docker manifest --help | grep "docker manifest COMMAND" > /dev/null || (echo "docker manifest is needed. Consider upgrading docker" && exit 4)
-	@ DOCKER_CLI_EXPERIMENTAL=enabled docker version -f '{{.Client.Experimental}}' | grep "true" > /dev/null || (echo "docker experimental mode is not enabled" && exit 5)
+	@ docker manifest --help > /dev/null 2>&1 || (echo "docker manifest is needed. Consider upgrading docker" && exit 4)
+	@ # Modern Docker versions have manifest support built-in, no experimental mode needed
 	# Debug info
 	@ echo "DOCKER_REGISTRY: ${DOCKER_REGISTRY}"
 	@ echo "BUILD_DATE: ${BUILD_DATE}"

@@ -48,18 +48,18 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # 	apt-key list > /dev/null
 
 # Changed from original - start: Set MySQL version to 5.7.44
-ENV MYSQL_MAJOR 5.7
-ENV MYSQL_VERSION 5.7.44-1ubuntu18.04
+ENV MYSQL_MAJOR=5.7
+ENV MYSQL_VERSION=5.7.44-1ubuntu18.04
 # Changed from original - end
 
 # Changed from original - start: Add MySQL official APT repository for specific version
-# Download and install MySQL APT repository configuration
+# Use MySQL APT config package to properly setup repository and keys
 RUN set -ex; \
-    wget https://repo.mysql.com/RPM-GPG-KEY-mysql-2023 -O /tmp/mysql-key.asc; \
-    mkdir -p /etc/apt/keyrings; \
-    gpg --dearmor < /tmp/mysql-key.asc > /etc/apt/keyrings/mysql.gpg; \
-    rm /tmp/mysql-key.asc; \
-    echo "deb [signed-by=/etc/apt/keyrings/mysql.gpg] http://repo.mysql.com/apt/ubuntu/ bionic mysql-${MYSQL_MAJOR}" > /etc/apt/sources.list.d/mysql.list
+    wget https://dev.mysql.com/get/mysql-apt-config_0.8.29-1_all.deb -O /tmp/mysql-apt-config.deb; \
+    echo "mysql-apt-config mysql-apt-config/select-server select mysql-${MYSQL_MAJOR}" | debconf-set-selections; \
+    DEBIAN_FRONTEND=noninteractive dpkg -i /tmp/mysql-apt-config.deb; \
+    rm /tmp/mysql-apt-config.deb; \
+    apt-get update
 # Changed from original - end
 
 # the "/var/lib/mysql" stuff here is because the mysql-server postinst doesn't have an explicit way to disable the mysql_install_db codepath besides having a database already "configured" (ie, stuff in /var/lib/mysql/mysql)
@@ -72,7 +72,7 @@ RUN { \
     echo mysql-community-server mysql-community-server/remove-test-db select false; \
     # Changed from original - end
     } | debconf-set-selections \
-    && apt-get update && apt-get install -y "mysql-community-server=${MYSQL_VERSION}" "mysql-community-client=${MYSQL_VERSION}" && rm -rf /var/lib/apt/lists/* \
+    && apt-get install -y "mysql-community-server=${MYSQL_VERSION}" "mysql-community-client=${MYSQL_VERSION}" && rm -rf /var/lib/apt/lists/* \
     && rm -rf /var/lib/mysql && mkdir -p /var/lib/mysql /var/run/mysqld \
     && chown -R mysql:mysql /var/lib/mysql /var/run/mysqld \
     # ensure that /var/run/mysqld (used for socket and lock files) is writable regardless of the UID our mysqld instance ends up having at runtime

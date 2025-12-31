@@ -16,13 +16,12 @@ RUN groupadd -r mysql && useradd -r -g mysql mysql
 # add gosu for easy step-down from root
 ENV GOSU_VERSION=1.12
 RUN set -x \
-    && apt-get update && apt-get install -y --no-install-recommends ca-certificates wget gpg \
+    && apt-get update && apt-get install -y --no-install-recommends ca-certificates wget gpg gnupg \
     && wget -O /usr/local/bin/gosu "https://github.com/tianon/gosu/releases/download/$GOSU_VERSION/gosu-$(dpkg --print-architecture | awk -F- '{ print $NF }')" \
     && chmod +x /usr/local/bin/gosu \
     && gosu nobody true \
-    && apt-get purge -y --auto-remove wget \
     && rm -rf /var/lib/apt/lists/*
-# Changed from original - end: upgrade to 1.12 and don't check asc file (was inspired by https://github.com/rothgar/rpi-wordpress/blob/master/mysql/Dockerfile)
+# Changed from original - end: keep wget and gpg for later use
 
 RUN mkdir /docker-entrypoint-initdb.d
 
@@ -54,18 +53,13 @@ ENV MYSQL_VERSION 5.7.44-1ubuntu18.04
 # Changed from original - end
 
 # Changed from original - start: Add MySQL official APT repository for specific version
+# Download and install MySQL APT repository configuration
 RUN set -ex; \
-    key='859BE8D7C586F538430B19C2467B942D3A79BD29'; \
-    export GNUPGHOME="$(mktemp -d)"; \
-    gpg --batch --keyserver keyserver.ubuntu.com --recv-keys "$key" || \
-    gpg --batch --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys "$key" || \
-    gpg --batch --keyserver pgp.mit.edu --recv-keys "$key"; \
+    wget https://repo.mysql.com/RPM-GPG-KEY-mysql-2023 -O /tmp/mysql-key.asc; \
     mkdir -p /etc/apt/keyrings; \
-    gpg --batch --export "$key" > /etc/apt/keyrings/mysql.gpg; \
-    gpgconf --kill all; \
-    rm -rf "$GNUPGHOME"
-
-RUN echo "deb [signed-by=/etc/apt/keyrings/mysql.gpg] http://repo.mysql.com/apt/ubuntu/ bionic mysql-${MYSQL_MAJOR}" > /etc/apt/sources.list.d/mysql.list
+    gpg --dearmor < /tmp/mysql-key.asc > /etc/apt/keyrings/mysql.gpg; \
+    rm /tmp/mysql-key.asc; \
+    echo "deb [signed-by=/etc/apt/keyrings/mysql.gpg] http://repo.mysql.com/apt/ubuntu/ bionic mysql-${MYSQL_MAJOR}" > /etc/apt/sources.list.d/mysql.list
 # Changed from original - end
 
 # the "/var/lib/mysql" stuff here is because the mysql-server postinst doesn't have an explicit way to disable the mysql_install_db codepath besides having a database already "configured" (ie, stuff in /var/lib/mysql/mysql)

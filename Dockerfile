@@ -16,7 +16,7 @@ RUN groupadd -r mysql && useradd -r -g mysql mysql
 # add gosu for easy step-down from root
 ENV GOSU_VERSION=1.12
 RUN set -x \
-    && apt-get update && apt-get install -y --no-install-recommends ca-certificates wget gpg gnupg \
+    && apt-get update && apt-get install -y --no-install-recommends ca-certificates wget gpg gnupg lsb-release \
     && wget -O /usr/local/bin/gosu "https://github.com/tianon/gosu/releases/download/$GOSU_VERSION/gosu-$(dpkg --print-architecture | awk -F- '{ print $NF }')" \
     && chmod +x /usr/local/bin/gosu \
     && gosu nobody true \
@@ -86,7 +86,7 @@ RUN { \
 
 VOLUME /var/lib/mysql
 
-ENV MYSQL_MAJOR 5.7
+ENV MYSQL_MAJOR=5.7
 #ADD https://raw.githubusercontent.com/docker-library/mysql/master/${MYSQL_MAJOR}/docker-entrypoint.sh /usr/local/bin/
 ADD https://raw.githubusercontent.com/nanhantianyi/docker-mysql-5.7-aarch64/refs/heads/master/docker-entrypoint.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh \

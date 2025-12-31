@@ -60,7 +60,9 @@ jobs:
           echo "version=5.7.44" >> $GITHUB_OUTPUT
           echo "vcs_ref=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
           echo "build_date=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> $GITHUB_OUTPUT
-          echo "tag=${{ env.REGISTRY }}/${{ github.repository_owner }}/mysql:5.7.44-linux-${{ matrix.arch }}" >> $GITHUB_OUTPUT
+          # Convert repository owner to lowercase for Docker tag
+          OWNER_LOWER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          echo "tag=${{ env.REGISTRY }}/${OWNER_LOWER}/mysql:5.7.44-linux-${{ matrix.arch }}" >> $GITHUB_OUTPUT
       
       - name: Build and push ${{ matrix.arch }} image
         run: |

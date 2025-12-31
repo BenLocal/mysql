@@ -93,7 +93,8 @@ RUN { \
 VOLUME /var/lib/mysql
 
 ENV MYSQL_MAJOR 5.7
-ADD https://raw.githubusercontent.com/docker-library/mysql/master/${MYSQL_MAJOR}/docker-entrypoint.sh /usr/local/bin/
+#ADD https://raw.githubusercontent.com/docker-library/mysql/master/${MYSQL_MAJOR}/docker-entrypoint.sh /usr/local/bin/
+ADD https://raw.githubusercontent.com/nanhantianyi/docker-mysql-5.7-aarch64/refs/heads/master/docker-entrypoint.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh \
     && chown mysql:mysql /usr/local/bin/docker-entrypoint.sh \
     && ln -s usr/local/bin/docker-entrypoint.sh /entrypoint.sh # backwards compat

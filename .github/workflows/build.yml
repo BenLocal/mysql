@@ -3,14 +3,7 @@ name: build
 on:
   push:
     branches:
-      - main
-  workflow_dispatch:
-    inputs:
-      doRelease:
-        description: "Publish new release"
-        type: boolean
-        default: false
-        required: false
+      - master
 
 env:
   REGISTRY: ghcr.io

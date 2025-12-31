@@ -16,28 +16,28 @@ RUN groupadd -r mysql && useradd -r -g mysql mysql
 # add gosu for easy step-down from root
 ENV GOSU_VERSION=1.12
 RUN set -x \
-	&& apt-get update && apt-get install -y --no-install-recommends ca-certificates wget gpg \
-	&& wget -O /usr/local/bin/gosu "https://github.com/tianon/gosu/releases/download/$GOSU_VERSION/gosu-$(dpkg --print-architecture | awk -F- '{ print $NF }')" \
-	&& chmod +x /usr/local/bin/gosu \
-	&& gosu nobody true \
-	&& apt-get purge -y --auto-remove wget \
-	&& rm -rf /var/lib/apt/lists/*
+    && apt-get update && apt-get install -y --no-install-recommends ca-certificates wget gpg \
+    && wget -O /usr/local/bin/gosu "https://github.com/tianon/gosu/releases/download/$GOSU_VERSION/gosu-$(dpkg --print-architecture | awk -F- '{ print $NF }')" \
+    && chmod +x /usr/local/bin/gosu \
+    && gosu nobody true \
+    && apt-get purge -y --auto-remove wget \
+    && rm -rf /var/lib/apt/lists/*
 # Changed from original - end: upgrade to 1.12 and don't check asc file (was inspired by https://github.com/rothgar/rpi-wordpress/blob/master/mysql/Dockerfile)
 
 RUN mkdir /docker-entrypoint-initdb.d
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-# for MYSQL_RANDOM_ROOT_PASSWORD
-		pwgen \
-# for mysql_ssl_rsa_setup
-		openssl \
-# FATAL ERROR: please install the following Perl modules before executing /usr/local/mysql/scripts/mysql_install_db:
-# File::Basename
-# File::Copy
-# Sys::Hostname
-# Data::Dumper
-		perl \
-	&& rm -rf /var/lib/apt/lists/*
+    # for MYSQL_RANDOM_ROOT_PASSWORD
+    pwgen \
+    # for mysql_ssl_rsa_setup
+    openssl \
+    # FATAL ERROR: please install the following Perl modules before executing /usr/local/mysql/scripts/mysql_install_db:
+    # File::Basename
+    # File::Copy
+    # Sys::Hostname
+    # Data::Dumper
+    perl \
+    && rm -rf /var/lib/apt/lists/*
 
 # RUN set -ex; \
 # # gpg: key 5072E1F5: public key "MySQL Release Engineering <mysql-build@oss.oracle.com>" imported
@@ -48,46 +48,55 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # 	rm -r "$GNUPGHOME"; \
 # 	apt-key list > /dev/null
 
-# Changed from original - start: MYSQL_VERSION and ENV MYSQL_MAJOR 5.7 are not used anymore
-# ENV MYSQL_MAJOR 5.7
-# ENV MYSQL_VERSION 5.7.21-1debian8
+# Changed from original - start: Set MySQL version to 5.7.44
+ENV MYSQL_MAJOR 5.7
+ENV MYSQL_VERSION 5.7.44-1ubuntu18.04
 # Changed from original - end
 
-# Changed from original - start: mysql-server is found in official ubuntu repo
-# RUN echo "deb http://repo.mysql.com/apt/debian/ jessie mysql-${MYSQL_MAJOR}" > /etc/apt/sources.list.d/mysql.list
+# Changed from original - start: Add MySQL official APT repository for specific version
+RUN set -ex; \
+    key='859BE8D7C586F538430B19C2467B942D3A79BD29'; \
+    export GNUPGHOME="$(mktemp -d)"; \
+    gpg --batch --keyserver keyserver.ubuntu.com --recv-keys "$key" || \
+    gpg --batch --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys "$key" || \
+    gpg --batch --keyserver pgp.mit.edu --recv-keys "$key"; \
+    mkdir -p /etc/apt/keyrings; \
+    gpg --batch --export "$key" > /etc/apt/keyrings/mysql.gpg; \
+    gpgconf --kill all; \
+    rm -rf "$GNUPGHOME"
+
+RUN echo "deb [signed-by=/etc/apt/keyrings/mysql.gpg] http://repo.mysql.com/apt/ubuntu/ bionic mysql-${MYSQL_MAJOR}" > /etc/apt/sources.list.d/mysql.list
 # Changed from original - end
 
 # the "/var/lib/mysql" stuff here is because the mysql-server postinst doesn't have an explicit way to disable the mysql_install_db codepath besides having a database already "configured" (ie, stuff in /var/lib/mysql/mysql)
 # also, we set debconf keys to make APT a little quieter
 RUN { \
-        # Changed from original - start: mysql-community-server is named mysql-server on ubuntu
-		echo mysql-server mysql-server/data-dir select ''; \
-        # Changed from original: root-pass is names root_password on ubuntu
-		echo mysql-server mysql-server/root_password password 'changeit'; \
-        # Changed from original: re-root-pass is names root_password_again on ubuntu
-		echo mysql-server mysql-server/root_password_again password 'changeit'; \
-		echo mysql-server mysql-server/remove-test-db select false; \
-        # Changed from original - end
-	} | debconf-set-selections \
-	&& apt-get update && apt-get install -y "mysql-server" && rm -rf /var/lib/apt/lists/* \
-	&& rm -rf /var/lib/mysql && mkdir -p /var/lib/mysql /var/run/mysqld \
-	&& chown -R mysql:mysql /var/lib/mysql /var/run/mysqld \
-# ensure that /var/run/mysqld (used for socket and lock files) is writable regardless of the UID our mysqld instance ends up having at runtime
-	&& chmod 777 /var/run/mysqld \
-# comment out a few problematic configuration values
-	&& find /etc/mysql/ -name '*.cnf' -print0 \
-		| xargs -0 grep -lZE '^(bind-address|log)' \
-		| xargs -rt -0 sed -Ei 's/^(bind-address|log)/#&/' \
-# don't reverse lookup hostnames, they are usually another container
-	&& echo '[mysqld]\nskip-host-cache\nskip-name-resolve' > /etc/mysql/conf.d/docker.cnf
+    # Changed from original - start: mysql-community-server package name from MySQL repo
+    echo mysql-community-server mysql-community-server/data-dir select ''; \
+    echo mysql-community-server mysql-community-server/root-pass password 'changeit'; \
+    echo mysql-community-server mysql-community-server/re-root-pass password 'changeit'; \
+    echo mysql-community-server mysql-community-server/remove-test-db select false; \
+    # Changed from original - end
+    } | debconf-set-selections \
+    && apt-get update && apt-get install -y "mysql-community-server=${MYSQL_VERSION}" "mysql-community-client=${MYSQL_VERSION}" && rm -rf /var/lib/apt/lists/* \
+    && rm -rf /var/lib/mysql && mkdir -p /var/lib/mysql /var/run/mysqld \
+    && chown -R mysql:mysql /var/lib/mysql /var/run/mysqld \
+    # ensure that /var/run/mysqld (used for socket and lock files) is writable regardless of the UID our mysqld instance ends up having at runtime
+    && chmod 777 /var/run/mysqld \
+    # comment out a few problematic configuration values
+    && find /etc/mysql/ -name '*.cnf' -print0 \
+    | xargs -0 grep -lZE '^(bind-address|log)' \
+    | xargs -rt -0 sed -Ei 's/^(bind-address|log)/#&/' \
+    # don't reverse lookup hostnames, they are usually another container
+    && echo '[mysqld]\nskip-host-cache\nskip-name-resolve' > /etc/mysql/conf.d/docker.cnf
 
 VOLUME /var/lib/mysql
 
 ENV MYSQL_MAJOR 5.7
 ADD https://raw.githubusercontent.com/docker-library/mysql/master/${MYSQL_MAJOR}/docker-entrypoint.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh \
- && chown mysql:mysql /usr/local/bin/docker-entrypoint.sh \
- && ln -s usr/local/bin/docker-entrypoint.sh /entrypoint.sh # backwards compat
+    && chown mysql:mysql /usr/local/bin/docker-entrypoint.sh \
+    && ln -s usr/local/bin/docker-entrypoint.sh /entrypoint.sh # backwards compat
 # Changed from original - start: on ubuntu, /usr/local/bin is not in the path
 ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
 # Changed from original - end: on ubuntu, /usr/local/bin is not in the path
@@ -111,6 +120,6 @@ ADD my-small.cnf /etc/mysql/conf.d/my.cnf
 ARG VCS_REF
 ARG BUILD_DATE
 LABEL \
-	org.label-schema.build-date=${BUILD_DATE} \
-	org.label-schema.vcs-ref=${VCS_REF} \
-	org.label-schema.vcs-url="https://github.com/biarms/mysql"
+    org.label-schema.build-date=${BUILD_DATE} \
+    org.label-schema.vcs-ref=${VCS_REF} \
+    org.label-schema.vcs-url="https://github.com/biarms/mysql"
